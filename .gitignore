@@ -103,3 +103,9 @@ terraform.tfstate
 terraform.tfstate.backup
 *.tfvars
 terraform/
+
+# ========================================
+# AI-Driven Files
+# ========================================
+CLAUDE.md
+PROGRESS.md

@@ -1,0 +1,33 @@
+# Général
+resource_group_name = "gmartinRG"
+project_name        = "nyc-taxi"
+environment         = "dev"
+
+# Storage account
+storage_account_type        = "Standard"
+storage_account_replication = "LRS"
+
+# Container Registry
+acr_sku = "Basic"
+
+# Cosmos DB PostgreSQL
+cosmosdb_sku            = "BurstableMemoryOptimized" # Options : BurstableMemoryOptimized, GeneralPurpose, MemoryOptimized
+cosmosdb_vcores         = 1
+cosmosdb_storage        = 32768
+cosmosdb_node_count     = 0
+postgres_admin_username = "pgadmin"
+postgres_admin_password = ">>>>> ENTER YOUR PASSWORD <<<<<"
+
+# Log Analytics
+log_analytics_sku            = "PerGB2018"
+log_analytics_retention_days = 30
+
+# Container App
+container_app_cpu          = "0.5"
+container_app_memory       = "1.0Gi"
+container_app_min_replicas = 0
+container_app_max_replicas = 1
+
+# Pipeline
+pipeline_start_date = "2025-10"
+pipeline_end_date   = "2025-11"

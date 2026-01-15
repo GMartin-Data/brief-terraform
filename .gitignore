@@ -97,12 +97,15 @@ pgadmin_data/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# ========================================
+# Terraform
+# ========================================
 .terraform/
 .terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup
 *.tfvars
-terraform/
 
 # ========================================
 # AI-Driven Files

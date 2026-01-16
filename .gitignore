@@ -105,6 +105,7 @@ htmlcov/
 terraform.tfstate
 terraform.tfstate.backup
 *.tfvars
+!terraform.tfvars.example
 
 # ========================================
 # AI-Driven Files

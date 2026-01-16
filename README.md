@@ -64,11 +64,14 @@ Ce projet déploie une infrastructure cloud complète sur Azure pour traiter les
 │   ├── providers.tf               # Configuration Azure provider
 │   ├── main.tf                    # Resource Group, randoms
 │   ├── variables.tf               # Définition des variables
-│   ├── terraform.tfvars          # Vos valeurs de configuration
+│   ├── terraform.tfvars          # Valeurs de configuration (non versionné)
+│   ├── terraform.tfvars.example  # Template de configuration
 │   ├── storage.tf                # Storage Account et containers
-│   ├── container_registry.tf    # Azure Container Registry
-│   ├── database.tf               # Cosmos DB for PostgreSQL
-│   └── container_apps.tf         # Container Apps et environnement
+│   ├── container_registry.tf     # Azure Container Registry
+│   ├── database.tf               # Cosmos DB for PostgreSQL + firewall
+│   ├── monitoring.tf             # Log Analytics Workspace
+│   ├── container_apps.tf         # Container Apps Environment + App
+│   └── outputs.tf                # URLs, connection strings, noms
 │
 ├── pipelines/                     # Application Python (fournie)
 │   ├── ingestion/                # Pipeline 1 : Download
@@ -88,6 +91,41 @@ Ce projet déploie une infrastructure cloud complète sur Azure pour traiter les
 ├── Dockerfile                    # Image Docker (fourni)
 ├── main.py                       # Point d'entrée pipeline (fourni)
 └── README.md                     # Documentation
+```
+
+## 🔧 Infrastructure as Code
+
+### Ressources Terraform
+
+| Fichier | Ressources | Description |
+|---------|------------|-------------|
+| `main.tf` | `random_string`, data source RG | Suffixe unique pour noms globaux |
+| `storage.tf` | `azurerm_storage_account`, `azurerm_storage_container` x2 | Stockage blob avec containers `raw` et `processed` |
+| `container_registry.tf` | `azurerm_container_registry` | Registry Docker avec admin activé |
+| `database.tf` | `azurerm_cosmosdb_postgresql_cluster`, `azurerm_cosmosdb_postgresql_firewall_rule` | PostgreSQL distribué (Citus) + règles firewall |
+| `monitoring.tf` | `azurerm_log_analytics_workspace` | Centralisation des logs |
+| `container_apps.tf` | `azurerm_container_app_environment`, `azurerm_container_app` | Environnement serverless + application |
+| `outputs.tf` | 6 outputs | Valeurs utiles post-déploiement |
+
+### Choix Techniques
+
+**Nommage unique** : `random_string` de 6 caractères ajouté aux noms de ressources globales (Storage Account, ACR, Cosmos DB) pour garantir l'unicité mondiale.
+
+**Secrets Container App** : Les credentials sensibles (connection strings, mots de passe) sont injectés via le bloc `secret {}` et référencés dans `env {}` avec `secret_name` — jamais en clair dans les variables d'environnement.
+
+**Firewall Cosmos DB** : Règle `0.0.0.0` pour autoriser les services Azure internes. Option `my_ip_address` pour debug local avec `psql`.
+
+**SKU Cosmos DB** : `BurstableMemoryOptimized` obligatoire pour 1 vCore (pas `GeneralPurpose`).
+
+### Outputs Disponibles
+
+```bash
+terraform output acr_name              # Nom du Container Registry
+terraform output acr_login_server      # URL pour docker push
+terraform output storage_connection_string  # Connection string Storage (sensible)
+terraform output cosmos_db_connection_string # Connection string PostgreSQL (sensible)
+terraform output container_app_name    # Nom du Container App
+terraform output resource_group_name   # Nom du Resource Group
 ```
 
 ## 🚀 Prérequis
@@ -173,6 +211,8 @@ terraform plan
 
 ## 📦 Déploiement
 
+![Terraform Plan](docs/screenshots/01-terraform-plan.png)
+
 ### Étape 1 : Créer l'infrastructure de base
 
 Créer d'abord l'ACR pour pouvoir y pousser l'image Docker :
@@ -230,6 +270,8 @@ az resource list --resource-group rg-nyctaxi-dev --output table
 az containerapp list --resource-group rg-nyctaxi-dev --output table
 ```
 
+![Resource Group Portal](docs/screenshots/02-resource-group-portal.png)
+
 ## 📊 Utilisation
 
 ### Voir les logs du pipeline
@@ -248,6 +290,8 @@ az containerapp logs show \
   --tail 100
 ```
 
+![Container App Logs](docs/screenshots/03-container-app-logs.png)
+
 ### Se connecter à la base de données
 
 ```bash
@@ -255,7 +299,7 @@ az containerapp logs show \
 terraform output cosmos_db_connection_string
 
 # Se connecter avec psql (si votre IP est autorisée)
-psql "postgresql://taxiadmin:PASSWORD@cosmos-nyctaxi-dev-XXXXX.postgres.cosmos.azure.com:5432/citus?sslmode=require"
+psql "postgresql://citus:PASSWORD@hostname.postgres.cosmos.azure.com:5432/citus?sslmode=require"
 ```
 
 ### Requêtes SQL pour vérifier les données
@@ -284,6 +328,8 @@ GROUP BY d.jour_semaine_nom
 ORDER BY nombre_courses DESC;
 ```
 
+![PostgreSQL Tables Count](docs/screenshots/04-psql-tables-count.png)
+
 ## 🔧 Troubleshooting
 
 ### Erreur : "MANIFEST_UNKNOWN: manifest tagged by 'latest' is not found"
@@ -294,11 +340,59 @@ ORDER BY nombre_courses DESC;
 1. Builder et pusher l'image (voir Étape 2)
 2. Réessayer `terraform apply`
 
+---
+
 ### Erreur : Cosmos DB SKU Invalid
 
 **Cause** : Configuration SKU incorrecte dans `database.tf`
 
 **Solution** : Vérifier que `coordinator_server_edition = "BurstableMemoryOptimized"` pour 1 vCore
+
+---
+
+### Erreur : "Connection timed out" vers PostgreSQL
+
+**Symptôme** : Le Container App ne peut pas se connecter à Cosmos DB, même avec la firewall rule créée.
+
+**Cause** : Les règles firewall Cosmos DB peuvent prendre **plusieurs minutes** à se propager au niveau réseau, même si elles apparaissent "Succeeded" dans le portail.
+
+**Solutions** :
+1. Attendre 2-5 minutes et relancer le Container App
+2. Forcer un redéploiement : `az containerapp revision restart`
+
+---
+
+### Erreur : Utilisateur PostgreSQL "not found"
+
+**Symptôme** : `FATAL: password authentication failed for user "taxiadmin"`
+
+**Cause** : Cosmos DB for PostgreSQL utilise **toujours** `citus` comme utilisateur admin. L'attribut `administrator_login_password` définit le mot de passe, mais le username n'est pas configurable.
+
+**Solution** : Utiliser `citus` comme username dans la connection string, pas le nom défini dans les variables.
+
+```
+postgresql://citus:PASSWORD@hostname:5432/citus?sslmode=require
+```
+
+---
+
+### Erreur : "Problem with the SSL CA cert"
+
+**Symptôme** : DuckDB échoue à lire les fichiers Parquet depuis Azure Storage avec une erreur SSL.
+
+**Cause** : Dans le container Docker, DuckDB n'utilise pas les certificats système par défaut.
+
+**Solutions** :
+1. Ajouter `ca-certificates` dans le Dockerfile :
+   ```dockerfile
+   RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+   ```
+2. Configurer DuckDB pour utiliser curl :
+   ```python
+   conn.execute("SET azure_transport_option_type = 'curl';")
+   ```
+
+---
 
 ### Erreur : Container App ne démarre pas
 
@@ -308,12 +402,18 @@ ORDER BY nombre_courses DESC;
 3. Vérifier que l'image existe dans ACR
 4. Vérifier les secrets (storage, postgres, acr)
 
-### Erreur : Connexion PostgreSQL refusée
+---
 
-**Vérifications** :
-1. Vérifier que la firewall rule existe (autoriser services Azure)
-2. Vérifier SSL mode = `require`
-3. Vérifier les credentials
+### Erreur : Connexion PostgreSQL refusée (depuis machine locale)
+
+**Cause** : Votre IP n'est pas autorisée dans le firewall Cosmos DB.
+
+**Solution** : Ajouter votre IP temporairement :
+```bash
+terraform apply -var="my_ip_address=$(curl -s ifconfig.me)"
+```
+
+---
 
 ### L'image Docker ne se build pas
 
@@ -321,6 +421,26 @@ ORDER BY nombre_courses DESC;
 1. Vérifier que `pyproject.toml` et `uv.lock` existent
 2. Vérifier que tous les dossiers requis existent (pipelines/, utils/, sql/)
 3. Essayer de builder en mode verbose : `docker build --progress=plain -t nyc-taxi-pipeline:latest .`
+
+---
+
+### Piège Terraform : Blocs multiples écrasés
+
+**Symptôme** : Seule la dernière variable d'environnement ou le dernier secret est pris en compte.
+
+**Cause** : Mettre plusieurs `env {}` ou `secret {}` dans un seul bloc Terraform — le dernier écrase les précédents.
+
+**Solution** : Toujours un bloc séparé par élément :
+```hcl
+# Correct
+env { name = "VAR1" value = "val1" }
+env { name = "VAR2" value = "val2" }
+
+# Incorrect (VAR1 sera ignoré)
+env {
+  name = "VAR1" value = "val1"
+  name = "VAR2" value = "val2"
+}
 
 ## 💰 Gestion des Coûts
 
@@ -390,6 +510,8 @@ az group delete --name rg-nyctaxi-dev --yes
 ### Fonctionnement de l'application
 
 L'application Python s'exécute en 3 étapes séquentielles :
+
+![Storage Raw Container](docs/screenshots/05-storage-raw-container.png)
 
 1. **Pipeline 1 : Download**
    - Télécharge les fichiers Parquet depuis NYC TLC

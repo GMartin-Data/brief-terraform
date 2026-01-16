@@ -56,6 +56,7 @@ def get_database_duckdb() -> Generator["duckdb.DuckDBPyConnection", None, None]:
             INSTALL azure;
             LOAD azure;
             SET azure_storage_connection_string='{azure_connection}';
+            SET azure_transport_option_type = 'curl'; 
             INSTALL postgres;
             LOAD postgres;
             ATTACH '{pg_connection}' AS postgres_db (TYPE POSTGRES);

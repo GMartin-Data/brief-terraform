@@ -1,3 +1,8 @@
+# =============================================================================
+# Providers - Azure et Random
+# Azure pour l'infrastructure cloud, Random pour générer des suffixes uniques
+# =============================================================================
+
 terraform {
   required_providers {
     azurerm = {

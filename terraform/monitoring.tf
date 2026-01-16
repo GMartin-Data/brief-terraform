@@ -1,3 +1,8 @@
+# =============================================================================
+# Log Analytics Workspace
+# Centralise les logs du Container Apps Environment
+# =============================================================================
+
 resource "azurerm_log_analytics_workspace" "main" {
   name                = "law-${var.project_name}-${var.environment}-${random_string.suffix.result}"
   location            = data.azurerm_resource_group.main.location

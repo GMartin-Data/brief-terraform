@@ -1,3 +1,9 @@
+# =============================================================================
+# Container Apps Environment + Container App
+# Structure : secrets (credentials) → registry (auth ACR) → template (container)
+# Les secrets sont référencés dans env {} via secret_name (jamais en clair)
+# =============================================================================
+
 resource "azurerm_container_app_environment" "main" {
   name                = "cae-${var.project_name}-${var.environment}-${random_string.suffix.result}"
   location            = data.azurerm_resource_group.main.location

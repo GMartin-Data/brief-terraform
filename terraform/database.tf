@@ -1,3 +1,8 @@
+# =============================================================================
+# Cosmos DB for PostgreSQL (Citus)
+# Note : l'utilisateur admin est toujours "citus", non configurable
+# =============================================================================
+
 resource "azurerm_cosmosdb_postgresql_cluster" "main" {
   name                            = "pg${replace(var.project_name, "-", "")}${var.environment}${random_string.suffix.result}"
   location                        = data.azurerm_resource_group.main.location
@@ -8,6 +13,13 @@ resource "azurerm_cosmosdb_postgresql_cluster" "main" {
   coordinator_vcore_count         = var.cosmosdb_vcores
   coordinator_storage_quota_in_mb = var.cosmosdb_storage
 }
+
+# -----------------------------------------------------------------------------
+# Firewall Rules
+# - allow_azure : autorise les services Azure internes (0.0.0.0)
+# - allow_container_app : autorise l'IP sortante du Container App
+# - allow_my_ip : optionnel, pour debug local avec psql (via -var="my_ip_address=...")
+# -----------------------------------------------------------------------------
 
 resource "azurerm_cosmosdb_postgresql_firewall_rule" "allow_azure" {
   name             = "AllowAzureServices"

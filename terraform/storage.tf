@@ -1,3 +1,9 @@
+# =============================================================================
+# Storage Account + Containers (raw, processed)
+# Nommage : st<projet><env><suffix> - le suffix random garantit l'unicité globale
+# Les tirets sont retirés car interdits dans les noms de Storage Account
+# =============================================================================
+
 resource "azurerm_storage_account" "main" {
   name                     = "st${replace(var.project_name, "-", "")}${var.environment}${random_string.suffix.result}"
   resource_group_name      = data.azurerm_resource_group.main.name

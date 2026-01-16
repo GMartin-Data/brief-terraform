@@ -15,7 +15,6 @@ cosmosdb_sku            = "BurstableMemoryOptimized" # Options : BurstableMemory
 cosmosdb_vcores         = 1
 cosmosdb_storage        = 32768
 cosmosdb_node_count     = 0
-postgres_admin_username = "pgadmin"
 postgres_admin_password = ">>>>> ENTER YOUR PASSWORD <<<<<"
 
 # Log Analytics

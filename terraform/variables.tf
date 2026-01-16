@@ -60,11 +60,6 @@ variable "cosmosdb_node_count" {
 }
 
 
-variable "postgres_admin_username" {
-  description = "Nom d'utilisateur administrateur pour PostgreSQL"
-  type        = string
-}
-
 variable "postgres_admin_password" {
   description = "Mot de passe administrateur pour PostgreSQL"
   type        = string

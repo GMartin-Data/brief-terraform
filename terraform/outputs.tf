@@ -16,7 +16,7 @@ output "storage-connection-string" {
 
 output "cosmosdb-connection-string" {
   description = "Chaîne de connexion de la base de données Cosmos DB PostgreSQL"
-  value       = "postgresql://${var.postgres_admin_username}:${var.postgres_admin_password}@${azurerm_cosmosdb_postgresql_cluster.main.servers[0].fqdn}:5432/citus?sslmode=require"
+  value       = "postgresql://citus:${var.postgres_admin_password}@${azurerm_cosmosdb_postgresql_cluster.main.servers[0].fqdn}:5432/citus?sslmode=require"
   sensitive   = true
 }
 

@@ -60,7 +60,7 @@ resource "azurerm_container_app" "main" {
       }
       env {
         name  = "POSTGRES_USER"
-        value = var.postgres_admin_username
+        value = "citus"
       }
       env {
         name        = "POSTGRES_PASSWORD"

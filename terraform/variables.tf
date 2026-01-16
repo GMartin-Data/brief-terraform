@@ -108,3 +108,10 @@ variable "pipeline_end_date" {
   description = "Date de fin du pipeline (format YYYY-MM)"
   type        = string
 }
+
+# Debug
+variable "my_ip_address" {
+  description = "Adresse IP pour accès temporaire à PostgreSQL (debug)"
+  type        = string
+  default     = ""
+}

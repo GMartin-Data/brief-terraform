@@ -22,3 +22,11 @@ resource "azurerm_cosmosdb_postgresql_firewall_rule" "allow_container_app" {
   start_ip_address = azurerm_container_app.main.outbound_ip_addresses[0]
   end_ip_address   = azurerm_container_app.main.outbound_ip_addresses[0]
 }
+
+resource "azurerm_cosmosdb_postgresql_firewall_rule" "allow_my_ip" {
+  count            = var.my_ip_address != "" ? 1 : 0
+  name             = "AllowMyIP"
+  cluster_id       = azurerm_cosmosdb_postgresql_cluster.main.id
+  start_ip_address = var.my_ip_address
+  end_ip_address   = var.my_ip_address
+}

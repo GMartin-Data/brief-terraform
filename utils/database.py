@@ -44,6 +44,7 @@ def get_database_duckdb() -> Generator["duckdb.DuckDBPyConnection", None, None]:
 
     nb_threads = multiprocessing.cpu_count()
     logger.info(f"Configuration DuckDB : {nb_threads} threads")
+    azure_connection = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     pg_connection = f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT', 5432)}/{os.getenv('POSTGRES_DB')}"
     connection = None
     try:
@@ -52,6 +53,9 @@ def get_database_duckdb() -> Generator["duckdb.DuckDBPyConnection", None, None]:
             SET threads TO {nb_threads};
             SET memory_limit = '8GB';
             SET preserve_insertion_order = false;
+            INSTALL azure;
+            LOAD azure;
+            SET azure_storage_connection_string='{azure_connection}';
             INSTALL postgres;
             LOAD postgres;
             ATTACH '{pg_connection}' AS postgres_db (TYPE POSTGRES);
